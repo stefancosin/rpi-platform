@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RPI Platform</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #1a1a2e;
+            color: #eaeaea;
+            font-family: Arial, sans-serif;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        h1 {
+            color: #e94560;
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #707080;
+            font-size: 14px;
+            margin-bottom: 40px;
+        }
+
+        .status-bar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 50px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #555;
+        }
+
+        .status-dot.online  { background-color: #51cf66; }
+        .status-dot.offline { background-color: #e94560; }
+
+        .status-text {
+            font-size: 14px;
+            color: #707080;
+        }
+
+        .nav-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 20px;
+        }
+
+        .nav-card {
+            background-color: #16213e;
+            border-radius: 10px;
+            padding: 30px 20px;
+            text-decoration: none;
+            color: #eaeaea;
+            border: 2px solid transparent;
+        }
+
+        .nav-card:hover {
+            border-color: #e94560;
+        }
+
+        .nav-card .icon {
+            font-size: 36px;
+            margin-bottom: 14px;
+        }
+
+        .nav-card h2 {
+            font-size: 18px;
+            color: #eaeaea;
+            margin-bottom: 8px;
+        }
+
+        .nav-card p {
+            font-size: 13px;
+            color: #707080;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <h1>RPI Platform</h1>
+    <p class="subtitle">Raspberry Pi IoT Control Panel</p>
+
+    <div class="status-bar">
+        <div class="status-dot" id="status-dot"></div>
+        <span class="status-text" id="status-text">Checking server...</span>
+    </div>
+
+    <div class="nav-grid">
+        <a class="nav-card" href="/sensors">
+            <div class="icon">📡</div>
+            <h2>Sensor Data</h2>
+            <p>View live temperature/humidity readings from ESP32 and browse sensor log</p>
+        </a>
+        <a class="nav-card" href="/control">
+            <div class="icon">🎛</div>
+            <h2>Control</h2>
+            <p>Switch AUTO/MANUAL and control heater, cooler, alarm, motor</p>
+        </a>
+        <a class="nav-card" href="/auto-config">
+            <div class="icon">⚙️</div>
+            <h2>Auto Config</h2>
+            <p>Set the temperature thresholds AUTO mode heats/cools/alarms at</p>
+        </a>
+    </div>
+
+</div>
+
+<script>
+    function checkHealth() {
+        fetch('/health')
+            .then(function(response) {
+                return response.json();
+            })
+            .then(function(data) {
+                var dot  = document.getElementById('status-dot');
+                var text = document.getElementById('status-text');
+                if (data.status === 'ok') {
+                    dot.className    = 'status-dot online';
+                    text.textContent = 'Server online';
+                }
+            })
+            .catch(function() {
+                var dot  = document.getElementById('status-dot');
+                var text = document.getElementById('status-text');
+                dot.className    = 'status-dot offline';
+                text.textContent = 'Server offline';
+            });
+    }
+
+    checkHealth();
+    setInterval(checkHealth, 5000);
+</script>
+</body>
+</html>

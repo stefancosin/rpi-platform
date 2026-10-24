@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #1a1a2e;
+            color: #eaeaea;
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .top-bar {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 30px;
+        }
+
+        .back-btn {
+            background-color: #16213e;
+            border: none;
+            border-radius: 6px;
+            color: #eaeaea;
+            padding: 8px 16px;
+            font-size: 14px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .back-btn:hover { background-color: #0f3460; }
+
+        h1 { color: #e94560; font-size: 24px; }
+
+        .mode-card {
+            background-color: #16213e;
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border: 1px solid #0f3460;
+        }
+
+        .mode-card .name {
+            font-size: 18px;
+            margin-bottom: 6px;
+        }
+
+        .mode-card .hint {
+            font-size: 12px;
+            color: #707080;
+        }
+
+        .mode-btn {
+            width: 110px;
+            height: 40px;
+            border-radius: 20px;
+            border: none;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: bold;
+            color: #eaeaea;
+            background-color: #555;
+        }
+
+        .mode-btn.auto   { background-color: #4a7fd6; }
+        .mode-btn.manual { background-color: #e9a13b; color: #1a1a2e; }
+
+        .mode-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .actuators-note {
+            font-size: 13px;
+            color: #e9a13b;
+            margin-bottom: 16px;
+            display: none;
+        }
+
+        .actuators-note.visible { display: block; }
+
+        .control-card {
+            background-color: #16213e;
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .control-info .name {
+            font-size: 18px;
+            color: #eaeaea;
+            margin-bottom: 6px;
+        }
+
+        .control-info .state-text {
+            font-size: 13px;
+            color: #707080;
+        }
+
+        .control-info .state-text.on  { color: #51cf66; }
+        .control-info .state-text.off { color: #e94560; }
+
+        .toggle-btn {
+            width: 80px;
+            height: 40px;
+            border-radius: 20px;
+            border: none;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: bold;
+            color: #eaeaea;
+            background-color: #555;
+        }
+
+        .toggle-btn.on  { background-color: #51cf66; color: #1a1a2e; }
+        .toggle-btn.off { background-color: #e94560; }
+
+        .toggle-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .message {
+            font-size: 13px;
+            padding: 8px 12px;
+            border-radius: 4px;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .message.success {
+            background-color: #1a472a;
+            color: #51cf66;
+            display: block;
+        }
+
+        .message.error {
+            background-color: #4a1010;
+            color: #e94560;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <div class="top-bar">
+        <a class="back-btn" href="/">← Back</a>
+        <h1>Control Panel</h1>
+    </div>
+
+    <!-- AUTO / MANUAL mode switch - actuator commands below are only
+         applied by the ESP32 while in MANUAL mode -->
+    <div class="mode-card">
+        <div>
+            <div class="name">Mode: <span id="mode-state-text">AUTO</span></div>
+            <div class="hint">Actuators below only respond in MANUAL mode</div>
+        </div>
+        <button class="mode-btn auto" id="mode-btn" onclick="toggleMode()">AUTO</button>
+    </div>
+
+    <p class="actuators-note" id="actuators-note">
+        Switch to MANUAL to control actuators - in AUTO the ESP32 ignores these.
+    </p>
+
+    <!-- Heater -->
+    <div class="control-card">
+        <div class="control-info">
+            <div class="name">🔥 Heater</div>
+            <div class="state-text off" id="heater-state-text">OFF</div>
+        </div>
+        <button class="toggle-btn off"
+                id="heater-btn"
+                onclick="toggle('heater', 'heater-btn', 'heater-state-text')">
+            OFF
+        </button>
+    </div>
+
+    <!-- Cooler -->
+    <div class="control-card">
+        <div class="control-info">
+            <div class="name">❄️ Cooler</div>
+            <div class="state-text off" id="cooler-state-text">OFF</div>
+        </div>
+        <button class="toggle-btn off"
+                id="cooler-btn"
+                onclick="toggle('cooler', 'cooler-btn', 'cooler-state-text')">
+            OFF
+        </button>
+    </div>
+
+    <!-- Alarm -->
+    <div class="control-card">
+        <div class="control-info">
+            <div class="name">🚨 Alarm</div>
+            <div class="state-text off" id="alarm-state-text">OFF</div>
+        </div>
+        <button class="toggle-btn off"
+                id="alarm-btn"
+                onclick="toggle('alarm', 'alarm-btn', 'alarm-state-text')">
+            OFF
+        </button>
+    </div>
+
+    <!-- Motor -->
+    <div class="control-card">
+        <div class="control-info">
+            <div class="name">⚙️ Motor</div>
+            <div class="state-text off" id="motor-state-text">OFF</div>
+        </div>
+        <button class="toggle-btn off"
+                id="motor-btn"
+                onclick="toggle('motor', 'motor-btn', 'motor-state-text')">
+            OFF
+        </button>
+    </div>
+
+    <p class="message" id="message"></p>
+
+</div>
+
+<script>
+    /* How often each client re-checks the server for state changes made by
+       other clients (other tabs, other devices on the network) */
+    var POLL_INTERVAL_MS = 1000;
+
+    /* Peripherals shown on this page, paired with their DOM element ids */
+    var PERIPHERALS = [
+        { name: 'heater', btnId: 'heater-btn', stateTextId: 'heater-state-text' },
+        { name: 'cooler', btnId: 'cooler-btn', stateTextId: 'cooler-state-text' },
+        { name: 'alarm',  btnId: 'alarm-btn',  stateTextId: 'alarm-state-text' },
+        { name: 'motor',  btnId: 'motor-btn',  stateTextId: 'motor-state-text' }
+    ];
+
+    /* Per-peripheral flag so a background poll never overwrites the button
+       while a toggle() request for that same peripheral is in flight */
+    var requestInFlight = {};
+    var currentMode = 'auto';
+
+    function applyState(btnId, stateTextId, state) {
+        var btn       = document.getElementById(btnId);
+        var stateText = document.getElementById(stateTextId);
+        var isOn      = state === 'on';
+
+        btn.textContent       = isOn ? 'ON' : 'OFF';
+        btn.className         = isOn ? 'toggle-btn on' : 'toggle-btn off';
+        stateText.textContent = isOn ? 'ON' : 'OFF';
+        stateText.className   = isOn ? 'state-text on' : 'state-text off';
+    }
+
+    function applyActuatorAvailability() {
+        var manual = currentMode === 'manual';
+        document.getElementById('actuators-note').className =
+            'actuators-note' + (manual ? '' : ' visible');
+
+        PERIPHERALS.forEach(function(p) {
+            document.getElementById(p.btnId).disabled = !manual;
+        });
+    }
+
+    function applyMode(mode) {
+        currentMode = mode;
+
+        var btn       = document.getElementById('mode-btn');
+        var stateText = document.getElementById('mode-state-text');
+        var manual    = mode === 'manual';
+
+        btn.textContent       = manual ? 'MANUAL' : 'AUTO';
+        btn.className         = manual ? 'mode-btn manual' : 'mode-btn auto';
+        stateText.textContent = manual ? 'MANUAL' : 'AUTO';
+
+        applyActuatorAvailability();
+    }
+
+    function refreshState(name, btnId, stateTextId) {
+        if (requestInFlight[name]) {
+            return;
+        }
+
+        fetch('/peripheral-state?name=' + name)
+        .then(function(response) {
+            return response.json();
+        })
+        .then(function(data) {
+            applyState(btnId, stateTextId, data.state);
+        })
+        .catch(function() {
+            /* Silent - a background refresh failing isn't worth
+               interrupting the user with an error message */
+        });
+    }
+
+    function refreshMode() {
+        if (requestInFlight['mode']) {
+            return;
+        }
+
+        fetch('/peripheral-state?name=mode')
+        .then(function(response) {
+            return response.json();
+        })
+        .then(function(data) {
+            if (data.state === 'auto' || data.state === 'manual') {
+                applyMode(data.state);
+            }
+        })
+        .catch(function() {
+            /* Silent, same as refreshState() */
+        });
+    }
+
+    function toggle(name, btnId, stateTextId) {
+        var btn       = document.getElementById(btnId);
+        var message   = document.getElementById('message');
+
+        /* Flip whatever the button is currently showing, which
+           refreshState() keeps in sync with the server */
+        var newState = btn.classList.contains('on') ? 'off' : 'on';
+
+        requestInFlight[name] = true;
+        btn.disabled = true;
+
+        fetch('/set-peripheral?name=' + name + '&state=' + newState, {
+            method: 'POST'
+        })
+        .then(function(response) {
+            return response.json();
+        })
+        .then(function(data) {
+            if (data.status === 'ok') {
+                applyState(btnId, stateTextId, newState);
+                message.textContent = name + ' set to ' + newState.toUpperCase();
+                message.className   = 'message success';
+            } else {
+                message.textContent = 'Failed to set ' + name;
+                message.className   = 'message error';
+            }
+        })
+        .catch(function() {
+            message.textContent = 'Failed to connect to server';
+            message.className   = 'message error';
+        })
+        .finally(function() {
+            requestInFlight[name] = false;
+            btn.disabled = !(currentMode === 'manual');
+        });
+    }
+
+    function toggleMode() {
+        var message = document.getElementById('message');
+        var newMode = currentMode === 'manual' ? 'auto' : 'manual';
+
+        requestInFlight['mode'] = true;
+        document.getElementById('mode-btn').disabled = true;
+
+        fetch('/set-peripheral?name=mode&state=' + newMode, {
+            method: 'POST'
+        })
+        .then(function(response) {
+            return response.json();
+        })
+        .then(function(data) {
+            if (data.status === 'ok') {
+                applyMode(newMode);
+                message.textContent = 'Mode set to ' + newMode.toUpperCase();
+                message.className   = 'message success';
+            } else {
+                message.textContent = 'Failed to set mode';
+                message.className   = 'message error';
+            }
+        })
+        .catch(function() {
+            message.textContent = 'Failed to connect to server';
+            message.className   = 'message error';
+        })
+        .finally(function() {
+            requestInFlight['mode'] = false;
+            document.getElementById('mode-btn').disabled = false;
+        });
+    }
+
+    refreshMode();
+    setInterval(refreshMode, POLL_INTERVAL_MS);
+
+    PERIPHERALS.forEach(function(p) {
+        refreshState(p.name, p.btnId, p.stateTextId);
+        setInterval(function() {
+            refreshState(p.name, p.btnId, p.stateTextId);
+        }, POLL_INTERVAL_MS);
+    });
+</script>
+</body>
+</html>

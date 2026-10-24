@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto Config</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #1a1a2e;
+            color: #eaeaea;
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .top-bar {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 30px;
+        }
+
+        .back-btn {
+            background-color: #16213e;
+            border: none;
+            border-radius: 6px;
+            color: #eaeaea;
+            padding: 8px 16px;
+            font-size: 14px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .back-btn:hover { background-color: #0f3460; }
+
+        h1 { color: #e94560; font-size: 24px; }
+
+        .card {
+            background-color: #16213e;
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+
+        .field {
+            margin-bottom: 20px;
+        }
+
+        .field:last-child {
+            margin-bottom: 0;
+        }
+
+        .field label {
+            display: block;
+            font-size: 13px;
+            color: #707080;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .field .row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .field input[type="number"] {
+            flex: 1;
+            background-color: #0f3460;
+            border: 1px solid #1a1a2e;
+            border-radius: 6px;
+            color: #eaeaea;
+            font-size: 20px;
+            padding: 10px 14px;
+        }
+
+        .field .unit {
+            font-size: 14px;
+            color: #707080;
+        }
+
+        .field .current {
+            font-size: 12px;
+            color: #707080;
+            margin-top: 6px;
+        }
+
+        .explainer {
+            background-color: #16213e;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            color: #b0b0c0;
+            line-height: 1.6;
+        }
+
+        .explainer b { color: #eaeaea; }
+
+        .save-btn {
+            width: 100%;
+            background-color: #51cf66;
+            color: #1a1a2e;
+            border: none;
+            border-radius: 6px;
+            padding: 14px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .save-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .message {
+            font-size: 13px;
+            padding: 8px 12px;
+            border-radius: 4px;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .message.success {
+            background-color: #1a472a;
+            color: #51cf66;
+            display: block;
+        }
+
+        .message.error {
+            background-color: #4a1010;
+            color: #e94560;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <div class="top-bar">
+        <a class="back-btn" href="/">← Back</a>
+        <h1>Auto Config</h1>
+    </div>
+
+    <p class="explainer">
+        In <b>AUTO</b> mode: below the low threshold the <b>heater</b> turns on,
+        above the high threshold the <b>cooler</b> turns on, and outside either
+        threshold the <b>alarm</b> turns on. Between the two, everything stays off.
+    </p>
+
+    <div class="card">
+        <div class="field">
+            <label for="temp-low-input">Low Threshold</label>
+            <div class="row">
+                <input type="number" id="temp-low-input" step="0.5">
+                <span class="unit">°C</span>
+            </div>
+            <div class="current" id="temp-low-current">Current: --</div>
+        </div>
+
+        <div class="field">
+            <label for="temp-high-input">High Threshold</label>
+            <div class="row">
+                <input type="number" id="temp-high-input" step="0.5">
+                <span class="unit">°C</span>
+            </div>
+            <div class="current" id="temp-high-current">Current: --</div>
+        </div>
+    </div>
+
+    <button class="save-btn" id="save-btn" onclick="saveThresholds()">Save</button>
+    <p class="message" id="message"></p>
+
+</div>
+
+<script>
+    /* How often the page re-reads the ESP32-confirmed values, same
+       pattern as control.html/sensors.html */
+    var POLL_INTERVAL_MS = 2000;
+
+    /* Set while the user is actively editing a field, so a background
+       poll never overwrites what they're typing mid-edit */
+    var editing = { temp_low: false, temp_high: false };
+
+    ['temp-low-input', 'temp-high-input'].forEach(function(id) {
+        var key = id === 'temp-low-input' ? 'temp_low' : 'temp_high';
+        document.getElementById(id).addEventListener('focus', function() { editing[key] = true; });
+        document.getElementById(id).addEventListener('blur',  function() { editing[key] = false; });
+    });
+
+    function refreshThreshold(name, inputId, currentId) {
+        var key = name;
+
+        fetch('/peripheral-state?name=' + name)
+        .then(function(response) {
+            return response.json();
+        })
+        .then(function(data) {
+            var value = parseFloat(data.state);
+            if (isNaN(value)) {
+                return;
+            }
+
+            document.getElementById(currentId).textContent = 'Current: ' + value.toFixed(1) + '°C';
+
+            if (!editing[key]) {
+                document.getElementById(inputId).value = value;
+            }
+        })
+        .catch(function() {
+            /* Silent - background refresh failing isn't worth interrupting the user */
+        });
+    }
+
+    function saveThresholds() {
+        var btn      = document.getElementById('save-btn');
+        var message  = document.getElementById('message');
+        var lowVal   = parseFloat(document.getElementById('temp-low-input').value);
+        var highVal  = parseFloat(document.getElementById('temp-high-input').value);
+
+        if (isNaN(lowVal) || isNaN(highVal)) {
+            message.textContent = 'Enter both thresholds';
+            message.className   = 'message error';
+            return;
+        }
+
+        if (lowVal >= highVal) {
+            message.textContent = 'Low threshold must be below high threshold';
+            message.className   = 'message error';
+            return;
+        }
+
+        btn.disabled = true;
+
+        Promise.all([
+            fetch('/set-peripheral?name=temp_low&state=' + lowVal, { method: 'POST' }).then(function(r) { return r.json(); }),
+            fetch('/set-peripheral?name=temp_high&state=' + highVal, { method: 'POST' }).then(function(r) { return r.json(); })
+        ])
+        .then(function(results) {
+            var ok = results.every(function(r) { return r.status === 'ok'; });
+            if (ok) {
+                message.textContent = 'Thresholds saved';
+                message.className   = 'message success';
+            } else {
+                message.textContent = 'Failed to save thresholds';
+                message.className   = 'message error';
+            }
+        })
+        .catch(function() {
+            message.textContent = 'Failed to connect to server';
+            message.className   = 'message error';
+        })
+        .finally(function() {
+            btn.disabled = false;
+        });
+    }
+
+    refreshThreshold('temp_low', 'temp-low-input', 'temp-low-current');
+    refreshThreshold('temp_high', 'temp-high-input', 'temp-high-current');
+    setInterval(function() {
+        refreshThreshold('temp_low', 'temp-low-input', 'temp-low-current');
+        refreshThreshold('temp_high', 'temp-high-input', 'temp-high-current');
+    }, POLL_INTERVAL_MS);
+</script>
+</body>
+</html>
