@@ -1,0 +1,16 @@
+[Unit]
+Description=RPi Platform - incubator controller server
+After=network-online.target mosquitto.service
+Wants=network-online.target mosquitto.service
+
+[Service]
+Type=simple
+User=stefan
+Group=stefan
+WorkingDirectory=/home/stefan/Projects/rpi-platform/build
+ExecStart=/home/stefan/Projects/rpi-platform/build/rpi-platform
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

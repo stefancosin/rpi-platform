@@ -1,0 +1,12 @@
+# Build output
+build/
+build-aarch64/
+
+# TLS cert/key - deployment-specific, never commit
+config/server.crt
+config/server.key
+
+# SQLite database - runtime data, not source
+data/*.db
+data/*.db-shm
+data/*.db-wal
